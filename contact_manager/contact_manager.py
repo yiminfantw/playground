@@ -168,7 +168,7 @@ def main():
     args_ = []
     kwargs = {}
     if args.source == 'ldap':
-        args_ = [args.ldap_token, args.domain]
+        args_ = [args.token, args.domain]
     contacts = make_contacts(get_contacts(*args_, **kwargs))
     
     kwargs = {'indent': 4} if args.pretty else {}
