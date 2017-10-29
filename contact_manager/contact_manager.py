@@ -7,6 +7,7 @@ Description:
 import sys
 import abc
 import json
+import string
 import requests
 import argparse
 
@@ -100,14 +101,16 @@ class LdapContactHandler(BaseContactHandler):
         return alias_data   
 
 
-def get_ldap_contacts(token, domain):
+def get_ldap_contacts(token, domain, contact_type='all'):
     """
     """
     handler = LdapContactHandler(token=token, domain=domain)
-    
+
     contacts = []
-    contacts.extend(handler.get_users())
-    contacts.extend(handler.get_aliases())
+    if contact_type in ['user', 'all']:
+        contacts.extend(handler.get_users())
+    if contact_type in ['alias', 'all']:
+        contacts.extend(handler.get_aliases())
 
     return contacts
 
@@ -116,6 +119,22 @@ def make_rainloop_contacts(contacts):
     """
     """
     return ContactFormatter.rainloop(contacts)
+
+
+def filter_contacts(contacts, search_clause=''):
+    """
+    """
+    if not search_clause:
+        return contacts
+
+    new_contacts = []
+    for ct in contacts:
+        for elmt in ct:
+            if search_clause.lower() in elmt.lower():
+                new_contacts.append(ct)
+                break
+
+    return new_contacts
 
 
 def get_argument_parser():
@@ -140,6 +159,10 @@ def get_argument_parser():
     )
     argp.add_argument(
         '-dm', '--domain', default='',
+        help=''
+    )
+    argp.add_argument(
+        '-sc', '--search-clause', default='',
         help=''
     )
 
@@ -168,9 +191,14 @@ def main():
     args_ = []
     kwargs = {}
     if args.source == 'ldap':
-        args_ = [args.ldap_token, args.domain]
+        args_.extend([args.token, args.domain])
+        if args.search_clause.startswith('/'):
+            kwargs['contact_type'] = args.search_clause.strip('/')
     contacts = make_contacts(get_contacts(*args_, **kwargs))
     
+    if args.search_clause == args.search_clause.translate(None, string.punctuation):
+        contacts = filter_contacts(contacts, args.search_clause)
+
     kwargs = {'indent': 4} if args.pretty else {}
     print json.dumps(contacts, **kwargs)
     
